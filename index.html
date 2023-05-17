@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="author" content="@Lunarfox__">
+    <meta name="description" content="A Simple Tower Defense Game">
+    <link rel="stylesh" type="text/css" href="style.css">
+    <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+    <title>TowerGame</title>
+    <script src="src/classes.js"></script>
+    <script src="src/towerslots.js"></script>
+    <script src="src/waypoints.js"></script>
+    <script src="src/tower.js"></script>
+    <script src="src/textures.js"></script>
+    <script src="src/waves.js"></script>
+    <script src="src/enemies.js"></script>
+</head>
+<body onload="onLoad()">
+    <canvas id="gameCanvas" width="640" height="480"></canvas>
+    <img id="spriteSheet" src="assets/spritesheet.png" style="display: none;">
+    <div>Esc to pause/unpause</div>
+    <div id="moneyDiv" style="display: none;">Money: <span id='money'></span></div>
+    <div id="health" style="display: none;"></div>
+</body>
+</html>
