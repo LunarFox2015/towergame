@@ -73,11 +73,11 @@ const MONEY_TEX = {
     size: 40
 };
 
-const SELECTOR_BUTTON_TEXTURES= [
+const SELECTOR_BUTTON_TEXS= [
     {
         id:'cancel',
-        left:360,
-        right:400,
+        left:400,
+        right:440,
         top:320,
         bottom:360,
         size:40,
@@ -92,19 +92,79 @@ const SELECTOR_BUTTON_TEXTURES= [
     },
 ];
 
-const MENU_TEXTS = [
+const MENU_TEXS = [
+    {
+        id: 'bg',
+        color: 'pink',
+        left:0,
+        top:0,
+        width:0,
+        drawX:0,
+        drawY:0,
+    },
+    {
+        id: 'title',
+        left: 360,
+        top: 400,
+        width: 140,
+        height: 60,
+        drawX: 250,
+        drawY: 120,
+    },
     {
         id: 'start',
-        left: 360,
-        right: 500,
-        top: 400,
-        bottom: 480,
-        width: 140,
-        height: 80,
+        left: 280,
+        top: 360,
+        width: 80,
+        height: 40,
+        drawX: 280,
+        drawY: 220,
     },
     {
         id: 'pause',
         left: 280,
-        right: 360, 
+        top: 360,
+        width: 80,
+        height: 40,
+        drawX: 280,
+        drawY: 160,
+    },
+    {
+        id: 'quit',
+        left: 280,
+        top: 400,
+        width: 80,
+        height: 40,
+        drawX: 280,
+        drawY: 220,
+    },
+    {
+        id: 'game over',
+        left: 360,
+        top: 360,
+        width: 140,
+        height: 40,
+        drawX: 250,
+        drawY: 160,
     }
 ];
+
+const TOWER_TEXS = [
+    {
+        id: 'slot',
+        color: 'grey',
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0,
+        drawX: 0,
+        drawY: 0,
+    },
+    {
+        id: 'arrow',
+        left: 0,
+        top: 0,
+        width: 40,
+        height: 40,
+    }
+]
