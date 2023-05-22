@@ -16,7 +16,7 @@ const ENEMIES = [
         name:'ghost',
         health: 100,
         speed:20/60,
-        value:25,
+        value:5,
         tex: {
             left:40,
             top:0,

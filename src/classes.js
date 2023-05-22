@@ -1,5 +1,5 @@
 class TowerSlot{
-    constructor(x,y,radius,isActive=true){
+    constructor(x, y, radius, isActive=true){
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -28,20 +28,19 @@ class SelectorButton {
 } */
 
 class Tower {
-    constructor(x,y,firingRadius,towerRadius,firingDelay){
+    constructor(type, x, y, tex, damage, cost, firingRadius, firingDelay = 0){
+        this.type = type;
         this.x = x;
         this.y = y;
         this.firingRadius = firingRadius;
         this.firingDelay = firingDelay;
-        this.towerRadius = towerRadius;
-        this.height = towerRadius*2;
-        this.width = towerRadius*2;
-        this.top = this.y - this.towerRadius;
-        this.bottom = this.y + this.towerRadius;
-        this.left = this.x - this.towerRadius;
-        this.right = this.x + this.towerRadius;
-        this.textureLeft = 0;
-        this.textureTop = 0;
+        this.tex = tex;
+        this.damage = damage;
+        this.cost = cost;
+        this.top = this.y - this.tex.height/2;
+        this.bottom = this.y + this.tex.height/2;
+        this.left = this.x - this.tex.width/2;
+        this.right = this.x + this.tex.width/2;
         this.arcColor = {
             r:255,
             g:0,
@@ -49,7 +48,6 @@ class Tower {
             a:0.25,
         }
         this.drawArc = false;
-        this.cost = 50;
     }
 
     firingDelayDecrement() {
@@ -74,8 +72,8 @@ class Tower {
 }
 
 class Enemy {
-    constructor(health, velocity, value, tex = {}, x = -25, y = 87, target = 0, isAlive = true) {
-        this.velocity = velocity;
+    constructor(health, speed, value, tex, x = -25, y = 87, target = 0, isAlive = true) {
+        this.speed = speed;
         this.x = x;
         this.y = y;
         this.tex = tex;
@@ -94,6 +92,11 @@ class Enemy {
             this.isAlive = false;
         }
     }
+
+    updateLeftTop(){
+        this.left = this.x - this.tex.size/2;
+        this.top = this.y - this.tex.size/2;
+    }
 }
 
 class FiringAnim {
@@ -110,5 +113,6 @@ class FiringAnim {
         context.moveTo(this.sourceX, this.sourceY);
         context.lineTo(this.target.x, this.target.y);
         context.stroke();
+        this.timer--;
     }
 }

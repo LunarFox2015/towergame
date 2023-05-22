@@ -1,13 +1,38 @@
 "use strict"
 
-//constants
+/* TODOS:
+    * Make multiple tower types
+        - Blast Tower (splash damage)
+        - Slow Tower (slows enemies)
+        - Magic Tower (constant DOT)
+    * Upgradable towers
+        - Improve Damage, fire rate, range
+    * More Enemy Types
+        - Fast Enemies (need to be slowed down)
+        - Tanky Enemies (lot of health, vulnerable to magic)
+        - Swarm Enemies (lots of enemies that bunch up together,
+            each is individually weak but your towers can only
+            target one at a time, so vulnerable to splash damage)
+    * Call Wave Early
+        - Button appears several seconds after last enemy has spawned in each
+          letting you summon the next wave early for some extra money
+    * mouse pause button
+    * Wave Label
+    * Player Health Indicator
+    * Real Background
+    * Tower Firing Animations
+    * Smoother pathfinding
+    * enemy death animations
+    * Figure out a better format for designing waves 
+*/
+
+//global constants
 const FPS = 60;
-const CIRCLE_RADIANS = Math.PI * 2;
+const CIRCLE_RADIANS = Math.PI*2;
 const MENU_FILL_COLOR = 'rgba(255,255,255,0.5)';
-const TOWER_RADIUS = 20;
-const ENEMY_VELOCITY = 20/60;
-const ENEMY_SIZE = 20;
-const ENEMY_SPAWN = [-25,87];
+const STARTING_MONEY = 100;
+const WAVE_DELAY_FRAMES = 5*60;
+const FIRING_ANIMS_FRAMES = 5;
 
 //global variables
 var canvas;
@@ -30,7 +55,36 @@ var globalSelector = {
     x:0,
     y:0,
     isActive:false,
-    button:[]
+    button:[
+        {
+            id: 'cancel',
+            pos:{
+                x:0,
+                y:0,
+            },
+            bound:{
+                left:0,
+                top:0,
+                right:0,
+                bottom:0,
+            },
+            tex: SELECTOR_BUTTON_TEXS.find(t => { return t.id == 'cancel' }),
+        },
+        {
+            id: 'arrow',
+            pos:{
+                x:0,
+                y:0,
+            },
+            bound:{
+                left:0,
+                top:0,
+                right:0,
+                bottom:0,
+            },
+            tex:SELECTOR_BUTTON_TEXS.find(t => { return t.id == 'arrow' }),
+        },
+    ],
 };
 var playerMoney = 0;
 var moneyDisplay;
@@ -56,7 +110,8 @@ function onLoad() {
     gameFrameNumber = 0;
     lastFrameTime = performance.now();
 
-    canvas.addEventListener('mousedown', (event) => {
+    canvas.addEventListener('mousedown', event => {
+        if(event.button != 0) return;
         mouse = {
             x: event.offsetX,
             y: event.offsetY,
@@ -64,7 +119,7 @@ function onLoad() {
         clickHandler(mouse);
     });
 
-    canvas.addEventListener('mousemove', (event) => {
+    canvas.addEventListener('mousemove', event => {
         mouse = {
             x: event.offsetX,
             y: event.offsetY,
@@ -82,7 +137,7 @@ function onLoad() {
         });
     });
     
-    window.addEventListener('keydown', (event) => {        
+    window.addEventListener('keydown', event => {        
         switch(event.key) {
             case 'Escape': {
                 if(escPressed) return;
@@ -95,7 +150,7 @@ function onLoad() {
         }
     });
 
-    window.addEventListener('keyup', (event) => {
+    window.addEventListener('keyup', event => {
         switch(event.key) {
             case 'Escape': {
                 if(!escPressed) return;
@@ -116,9 +171,9 @@ function onLoad() {
 function onFrameInterval() {
     let now = performance.now();
     //Checks if it's time to advance game state
-    if(now-lastFrameTime>1000/FPS){
+    if(now - lastFrameTime > 1000/FPS){
         let timesLooped = 0;
-        while(now-lastFrameTime>1000/FPS && timesLooped < 5){
+        while(now - lastFrameTime > 1000/FPS && timesLooped < 5){
             advanceGameFrame();
             needRedraw = true;
             lastFrameTime += 1000/FPS;
@@ -136,7 +191,7 @@ function onDrawFrame(){
     if(needRedraw){
         const background_fill = 'pink';
         context.fillStyle = background_fill;
-        context.fillRect(0,0, canvas.width, canvas.height);
+        context.fillRect(0, 0, canvas.width, canvas.height);
 
         switch(sceneID){
             case 0:
@@ -149,7 +204,10 @@ function onDrawFrame(){
                 drawGameFrame();
                 drawPauseScreen();
                 break;
-            
+            case 3:
+                drawGameFrame();
+                drawGameOver();
+                break;
         }
 
         needRedraw = false;
@@ -159,65 +217,45 @@ function onDrawFrame(){
 
 function drawStartScreen(){
     context.fillStyle = MENU_FILL_COLOR;
-    context.fillRect(0,0, canvas.width, canvas.height);
-    const start_tex = {
-        left: 360,
-        top: 400,
-        width: 140,
-        height: 80
-    };
-    const S_button_tex = {
-        left: 280,
-        top: 360,
-        width: 80,
-        height: 40
-    }
-    let title = {x:0, y:0};
-    title.x = (canvas.width/2) - (start_tex.width/2);
-    title.y = (canvas.height/2) - (start_tex.height*2);
-    let button = {x:0, y:0};
-    button.x = (canvas.width/2) - (S_button_tex.width/2);
-    button.y = (canvas.height/2) - (S_button_tex.height/2);
+    context.fillRect(0, 0, canvas.width, canvas.height);
     
-    context.drawImage(spriteSheet, start_tex.left, start_tex.top, 
-        start_tex.width, start_tex.height, title.x, title.y, 
-        start_tex.width, start_tex.height);
-    
-    context.drawImage(spriteSheet, S_button_tex.left, S_button_tex.top,
-        S_button_tex.width, S_button_tex.height, button.x, button.y,
-        S_button_tex.width, S_button_tex.height);
+    let titleTex = MENU_TEXS.find(t => { return t.id == 'title' });
+    let startTex = MENU_TEXS.find(t => { return t.id == 'start' });
+
+    context.drawImage(spriteSheet, titleTex.left, titleTex.top, titleTex.width, titleTex.height,
+        titleTex.drawX, titleTex.drawY, titleTex.width, titleTex.height);
+
+    context.drawImage(spriteSheet, startTex.left, startTex.top, startTex.width, startTex.height, 
+        startTex.drawX, startTex.drawY, startTex.width, startTex.height);
 }
 
 function drawPauseScreen(){
     context.fillStyle = MENU_FILL_COLOR;
-    context.fillRect(0,0, canvas.width, canvas.height);
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
-    const pause_tex = {
-        left: 360,
-        top: 280,
-        width: 80,
-        height: 40,
-    };
-    const quit_tex = {
-        left: 280,
-        top: 400,
-        width: 80,
-        height: 40
-    }
-    let text = {x:0, y:0};
-    text.x = (canvas.width/2) - (pause_tex.width/2);
-    text.y = (canvas.height/2) - (pause_tex.height*2);
-    let button = {x:0, y:0};
-    button.x = (canvas.width/2) - (quit_tex.width/2);
-    button.y = (canvas.height/2) - (quit_tex.height/2);
+    let pauseTex = MENU_TEXS.find(t => { return t.id == 'pause' });
+    let quitTex = MENU_TEXS.find(t => { return t.id == 'quit' });
+        
+    context.drawImage(spriteSheet, pauseTex.left, pauseTex.top, pauseTex.width, pauseTex.height, 
+        pauseTex.drawX, pauseTex.drawY, pauseTex.width, pauseTex.height);
     
-    context.drawImage(spriteSheet, pause_tex.left, pause_tex.top, 
-        pause_tex.width, pause_tex.height, text.x, text.y, 
-        pause_tex.width, pause_tex.height);
+    context.drawImage(spriteSheet, quitTex.left, quitTex.top, quitTex.width, quitTex.height, 
+        quitTex.drawX, quitTex.drawY, quitTex.width, quitTex.height);
+}
+
+function drawGameOver(){
+    context.fillStyle = MENU_FILL_COLOR;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    let gameOverTex = MENU_TEXS.find(t => { return t.id == 'game over' });
+    let quitTex = MENU_TEXS.find(t => { return t.id == 'quit' });
+
+    context.drawImage(spriteSheet, gameOverTex.left, gameOverTex.top, gameOverTex.width, gameOverTex.height,
+        gameOverTex.drawX, gameOverTex.drawY, gameOverTex.width, gameOverTex.height);
     
-    context.drawImage(spriteSheet, quit_tex.left, quit_tex.top,
-        quit_tex.width, quit_tex.height, button.x, button.y,
-        quit_tex.width, quit_tex.height);
+    context.drawImage(spriteSheet, quitTex.left, quitTex.top, quitTex.width, quitTex.height, 
+        quitTex.drawX, quitTex.drawY, quitTex.width, quitTex.height);
+
 }
 
 function drawGameFrame(){
@@ -226,8 +264,7 @@ function drawGameFrame(){
     //draw tower slots
     towerSlotArray.forEach(tower => {
         if(tower.isActive) {
-            const slot_color = 'grey';
-            context.fillStyle = slot_color;
+            context.fillStyle = TOWER_TEXS.find(e => { return e.id == 'slot' }).color;
             context.beginPath();
             context.arc(tower.x, tower.y, tower.radius, 0, CIRCLE_RADIANS, false);
             context.fill();
@@ -235,25 +272,29 @@ function drawGameFrame(){
     });
 
     //draw firing anims
+    // console.log(firingAnims.length);
     firingAnims.forEach(anim => {
+            console.log('time left ', anim.timer);
             anim.drawAnim();
-            anim.timer--;
+            console.log('time left ', anim.timer);
         });
-    firingAnims = firingAnims.filter(a => { a.timer > 0 });
+    firingAnims = firingAnims.filter(a => { return a.timer > 0 });
 
     //draw enemies
     enemyArray.forEach(enemy => {
         const health_bar_h = 7;
-        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.size, enemy.tex.size, enemy.left, enemy.top, enemy.tex.size, enemy.tex.size);
+        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.size, enemy.tex.size, 
+            enemy.left, enemy.top, enemy.tex.size, enemy.tex.size);
         context.fillStyle = 'red';
-        context.fillRect(enemy.left, enemy.top - health_bar_h, (enemy.health/100)*ENEMY_SIZE, health_bar_h);
+        context.fillRect(enemy.left, enemy.top - health_bar_h, 
+            (enemy.health/100)*enemy.tex.size, health_bar_h);
     });
 
     //draw towers & firing arcs
     towerArray.forEach(tower => {
         context.drawImage(spriteSheet,
-            tower.textureLeft, tower.textureTop, tower.width, tower.height,
-            tower.left, tower.top, tower.width, tower.height);
+            tower.tex.left, tower.tex.top, tower.tex.width, tower.tex.height,
+            tower.left, tower.top, tower.tex.width, tower.tex.height);
         
         if(tower.drawArc) {
             context.beginPath();
@@ -269,9 +310,9 @@ function drawGameFrame(){
 
     //draw global selector
     if(globalSelector.isActive){
-        const size = 40;
         globalSelector.button.forEach(button =>{
-            context.drawImage(spriteSheet, button.tex.left, button.tex.top, size, size, button.x, button.y, size, size);
+            context.drawImage(spriteSheet, button.tex.left, button.tex.top, button.tex.size, button.tex.size, 
+                button.pos.x, button.pos.y, button.tex.size, button.tex.size);
         });
     }
 
@@ -280,14 +321,9 @@ function drawGameFrame(){
     let x = MONEY_TEX.position.x + MONEY_TEX.size;
     let y = MONEY_TEX.position.y + MONEY_TEX.size/4;
     moneyNumberArray.forEach(d => {
-        NUMBERS.every(n => {
-            if(d == n.value){
-                context.drawImage(spriteSheet, n.left, n.top, n.size, n.size, x, y, n.size, n.size);
-                x += n.size;
-                return false;
-            }
-            else return true;
-        });
+        let digit = NUMBERS.find(n => { return d == n.value });
+        context.drawImage(spriteSheet, digit.left, digit.top, digit.size, digit.size, x, y, digit.size, digit.size);
+        x += digit.size;
     });
 }
 
@@ -303,29 +339,32 @@ function advanceGameFrame(){
             healthDisplay.style.display = 'inline';
             moneyDisplay.innerHTML = playerMoney;
             
-            let phealthbar = ''
-            for(let i = playerHealth; i > 0; i--){
-                phealthbar += '♥';
-            }
-            healthDisplay.innerHTML = phealthbar;
-
             if(playerHealth <= 0){
                 sceneID = 0;
+                break;
             }
-            else if(enemyArray.length > 0) {
+            else {
+                let pHealthBar = ''
+                for(let i = playerHealth; i > 0; i--){
+                    pHealthBar += '♥';
+                }
+                healthDisplay.innerHTML = pHealthBar;
+            }
+
+            if(enemyArray.length > 0) {
                 moveEnemy();
                 if(towerArray.length > 0) attackEnemies();
                 enemyArray = enemyArray.filter(e => e.isAlive);
                 if(enemyArray.length <= 0) {
                     waveComplete = true;
-                    waveDelayFrames = 5*60;
+                    waveDelayFrames = WAVE_DELAY_FRAMES;
                 }
                 moneyNumberArray = moneyToArray(playerMoney);
             }
             else if(waveID < WAVE_TABLE.length){
                 newWave();
             }
-            else sceneID = 0;
+            else sceneID = 3;
             break;
         case 2:
             break;
@@ -338,22 +377,20 @@ function startGame(){
     towerSlotArray = [];
     enemyArray = [];
     firingAnims = [];
-    globalSelector = {
+    waveID = 1;
+    playerHealth = 3;
+    playerMoney = STARTING_MONEY;
+    Object.assign(globalSelector, {
         x:0,
         y:0,
         isActive:false,
-        button:[]
-    };
-    waveID = 1;
-    playerHealth = 3;
+    });   
 
-    const starting_money = 75;
-    playerMoney = starting_money;
-
+    const tower_radius = 20;
     towerSlots.forEach(slot => {
         let x = slot[0];
         let y = slot[1];
-        towerSlotArray.push(new TowerSlot(x, y, TOWER_RADIUS));
+        towerSlotArray.push(new TowerSlot(x, y, tower_radius));
     });
 
     spawnEnemies();
@@ -367,17 +404,16 @@ function spawnEnemies() {
         if(e.id === waveID) return true;
     });
     for(let i = 0; i < wave.enemyList.length; i++){
-        const next_to_spawn = wave.enemyList[i];
+        let nextSpawn = wave.enemyList[i];
         let spawnX = Math.min((i*-60)-25,-25);
-        switch(next_to_spawn){
+        switch(nextSpawn){
             case 0: {
-                let n = {isAlive:false};
-                enemyArray.push(n);
+                enemyArray.push({isAlive:false});
                 break;
             }
             case 1: {
                 let newGhost = ENEMIES.find(i => {
-                    if(next_to_spawn === i.id) return true;
+                    if(nextSpawn == i.id) return true;
                 });
                 enemyArray.push(new Enemy(newGhost.health, newGhost.speed, newGhost.value, newGhost.tex, spawnX));
                 break;
@@ -398,10 +434,11 @@ function newWave(){
     }
 }
 
-function placeTower(slot){
-    const firing_radius = 100;
+function placeTower(slot, type){
+    let tex = TOWER_TEXS.find(t => { return t.id == type;});
+    let newTower = TOWERS.find(t => { return t.id == type;});
     slot.isActive = false;
-    let t = new Tower(slot.x, slot.y, firing_radius, TOWER_RADIUS, 0);
+    let t = new Tower(type, slot.x, slot.y, tex, newTower.damage, newTower.cost, newTower.firingRadius);
     playerMoney -= t.cost;
     towerArray.push(t);
     towerSlotArray = towerSlotArray.filter(s => s.isActive);
@@ -409,99 +446,120 @@ function placeTower(slot){
 }
 
 function clickHandler(mouse){
-    const start_pause_bounds = {
-            left: 280,
-            top: 220,
-            right: 360,
-            bottom: 260,
-    }
-    if(mouse.x > start_pause_bounds.left &&
-        mouse.x < start_pause_bounds.right &&
-        mouse.y > start_pause_bounds.top &&
-        mouse.y < start_pause_bounds.bottom){
-            if(sceneID == 0) startGame();
-            else if (sceneID == 2) sceneID = 0;
-            return;
-    }
+    if(sceneID != 1) {
+        let buttonName;
+        if(sceneID == 0) buttonName = 'start';
+        else if(sceneID == 2) buttonName = 'quit';
+        // console.log(buttonName);
+        let button = MENU_TEXS.find(b => { return b.id == buttonName });
+        // console.log(button);
+        button.bound = {
+            left: button.drawX,
+            top: button.drawY,
+            right: button.drawX + button.width,
+            bottom: button.drawY + button.height,
+        };
+        // console.log(button.bound);
+        
+        if(mouse.x > button.bound.left &&
+            mouse.x < button.bound.right &&
+            mouse.y > button.bound.top &&
+            mouse.y < button.bound.bottom){
+                // console.log("button clicked");
+                if(sceneID == 0) startGame();
+                else if (sceneID == 2) sceneID = 0;
+                return;
+            }
+    }    
     clickFoundation(mouse);
     if(globalSelector.isActive) clickSelector(mouse);
 }
 
 function clickSelector(mouse){
-    globalSelector.button.forEach(button => {
-        if (mouse.x > button.bound.left &&
-            mouse.x < button.bound.right &&
-            mouse.y > button.bound.top &&
-            mouse.y < button.bound.bottom) {
-                switch(button.id){
-                    case 0: {
-                        globalSelector.isActive = false;
-                        break;
-                    }
-                    case 1: {
-                        if(playerMoney < 50) {
-                            globalSelector.isActive = false;
-                            break;
-                        }
-                        let slot = towerSlotArray.find(s => {
-                            return s.x == globalSelector.x && s.y == globalSelector.y;
-                        });
-                        placeTower(slot);
-                        break;
-                    }
-                    default: {
-                        console.log('something went wrong help');
-                        break;
-                    }
-                }
+    // console.log('clickSelector is running');
+    // console.log(globalSelector.button);
+    // console.log(mouse);
+    let buttonClicked = globalSelector.button.find(b => { if ( 
+        mouse.x > b.bound.left &&
+        mouse.x < b.bound.right &&
+        mouse.y > b.bound.top &&
+        mouse.y < b.bound.bottom) {
+            return b;
+        }});
+    
+    if(buttonClicked == undefined) return;
+
+    switch(buttonClicked.id){
+        case 'cancel': {
+            globalSelector.isActive = false;
+            break;
+        }
+        case 'arrow': {
+            let cost = TOWERS.find(t => { return t.id == 'arrow' }).cost;
+            if(playerMoney < cost) {
+                globalSelector.isActive = false;
+                break;
             }
-    });
+            let slot = towerSlotArray.find(s => { return s.x == globalSelector.x && s.y == globalSelector.y });
+            placeTower(slot, 'arrow');
+            break;
+        }
+        case undefined: {
+            //donothing
+            break;
+        }
+        default: {
+            //do nothing
+            break;
+        }
+    }
 }
 
 function clickFoundation(mouse){
-    towerSlotArray.every(slot => {
-        if( mouse.x > slot.left &&
-            mouse.x < slot.right &&
-            mouse.y > slot.top &&
-            mouse.y < slot.bottom){
-                const textsize = 40;
-                const arrowtext = {
-                    left:360,
-                    top:320,
-                };
-                const canceltext = {
-                    left:400,
-                    top:320,
-                };
-                                
-                globalSelector.x = slot.x;
-                globalSelector.y = slot.y;
-                globalSelector.isActive = true;
-
-                globalSelector.button = [];
-                
-                let arrow = new SelectorButton(1, (globalSelector.x - textsize), (globalSelector.y + textsize/2), arrowtext);
-                arrow.bound = {
-                    left:arrow.x,
-                    right:arrow.x + textsize,
-                    top:arrow.y,
-                    bottom:arrow.y + textsize,
-                };
-
-                let cancel = new SelectorButton(0, (globalSelector.x), (globalSelector.y + textsize/2), canceltext);
-                cancel.bound = {
-                    left:cancel.x,
-                    right:cancel.x + textsize,
-                    top:cancel.y,
-                    bottom:cancel.y + textsize,
-                };
-
-                globalSelector.button.push(arrow);
-                globalSelector.button.push(cancel);
-                return false;
-            } // end if
-        else return true;
+    // console.log('clicked a foundation');
+    let slot = towerSlotArray.find(s => { if(
+        mouse.x > s.left &&
+        mouse.x < s.right &&
+        mouse.y > s.top &&
+        mouse.y < s.bottom){
+            return s;
+        } 
     });
+    // console.log(slot);
+    if(slot == undefined) return;
+
+    globalSelector.x = slot.x;
+    globalSelector.y = slot.y;
+    globalSelector.isActive = true;
+    
+    // console.log(globalSelector.isActive);
+
+    let arrow = globalSelector.button.find(b => { return b.id == 'arrow' });
+    arrow.pos = {
+        x: globalSelector.x - arrow.tex.size,
+        y: globalSelector.y + arrow.tex.size/2,                
+    };
+    arrow.bound = {
+        left: arrow.pos.x,
+        right: arrow.pos.x + arrow.tex.size,
+        top: arrow.pos.y,
+        bottom: arrow.pos.y + arrow.tex.size,
+    };
+
+    let cancel = globalSelector.button.find(b => { return b.id == 'cancel' });;
+    cancel.pos = {
+        x: globalSelector.x,
+        y: globalSelector.y + cancel.tex.size/2,                
+    };
+    cancel.bound = {
+        left: cancel.pos.x,
+        right: cancel.pos.x + cancel.tex.size,
+        top: cancel.pos.y,
+        bottom: cancel.pos.y + cancel.tex.size,
+    };
+
+    // console.log(globalSelector.button);
+    // console.log(globalSelector.x, globalSelector.y);
 }
 
 function moveEnemy(){
@@ -509,60 +567,56 @@ function moveEnemy(){
         if(!enemy.isAlive) {
             return;
         }
-        const targetIndex = enemy.targetWaypoint;
-        const target = {
+        let targetIndex = enemy.targetWaypoint;
+        let target = {
             x: MAP_WAYPOINTS[targetIndex][0],
             y: MAP_WAYPOINTS[targetIndex][1]
         }
         if (enemy.x == target.x &&
             enemy.y == target.y){
-                if (enemy.targetWaypoint+1 < MAP_WAYPOINTS.length) enemy.targetWaypoint++;
+                if (enemy.targetWaypoint + 1 < MAP_WAYPOINTS.length) enemy.targetWaypoint++;
                 else {
                     enemy.isAlive = false;
                     playerHealth--;
                 }
             }
         if(enemy.isAlive) {
-            if(enemy.x + enemy.velocity < target.x) enemy.x += enemy.velocity;
-            else if (enemy.x  - enemy.velocity > target.x) enemy.x -= enemy.velocity;
+            if(enemy.x + enemy.speed < target.x) enemy.x += enemy.speed;
+            else if (enemy.x  - enemy.speed > target.x) enemy.x -= enemy.speed;
             else enemy.x = target.x;
-            if(enemy.y + enemy.velocity < target.y) enemy.y += enemy.velocity;
-            else if (enemy.y  - enemy.velocity > target.y) enemy.y -= enemy.velocity;
+            if(enemy.y + enemy.speed < target.y) enemy.y += enemy.speed;
+            else if (enemy.y  - enemy.speed > target.y) enemy.y -= enemy.speed;
             else enemy.y = target.y;
             
-            enemy.left = enemy.x - (ENEMY_SIZE/2);
-            enemy.top = enemy.y - (ENEMY_SIZE/2);
+            enemy.updateLeftTop();
         }
     });
-    enemyArray.sort((a,b) => {
+    enemyArray.sort((a, b) => {
         let v = 0;
-        let x = a.targetWaypoint + (1/getHyp((a.x - a.targetWaypoint.x),(a.y - a.targetWaypoint.y)));
-        let y = b.targetWaypoint + (1/getHyp((b.x - b.targetWaypoint.x),(b.y - b.targetWaypoint.y)));
-        if(x>y) v++;
-        else if(x<y) v--;
+        let x = a.targetWaypoint + (1/getHyp((a.x - a.targetWaypoint.x), (a.y - a.targetWaypoint.y)));
+        let y = b.targetWaypoint + (1/getHyp((b.x - b.targetWaypoint.x), (b.y - b.targetWaypoint.y)));
+        if(x > y) v++;
+        else if(x < y) v--;
         return v;
     });
 }
 
 function attackEnemies(){
-    const damage = 20;
-    const firing_delay_frames = 100;
-    const anim_delay_frames = 80;
     towerArray.forEach(tower => {
         tower.firingDelayDecrement();
         if(tower.firingDelay <= 0) {
-            enemyArray.every(enemy => {
+            let target = enemyArray.find(enemy => {
                 let a = tower.x - enemy.x;
                 let b = tower.y - enemy.y;
                 let c = getHyp(a,b);
-                if(c < (tower.firingRadius * tower.firingRadius)) {
-                    enemy.reduceHealth(damage);
-                    tower.firingDelayReset(firing_delay_frames);
-                    firingAnims.push(new FiringAnim(tower.x, tower.y, enemy, anim_delay_frames));
-                    return false;
-                }
-                return true;
+                return c < tower.firingRadius * tower.firingRadius;
             });
+            if(target != undefined){
+                target.reduceHealth(tower.damage);
+                let delay = TOWERS.find(t => { return t.id == tower.type }).firingDelayFrames;
+                tower.firingDelayReset(delay);
+                firingAnims.push(new FiringAnim(tower.x, tower.y, target, FIRING_ANIMS_FRAMES));
+            }
         }
     });
 }
@@ -580,7 +634,7 @@ function moneyToArray(money) {
     if(money >= 100){
         let c = Math.floor(m/100);
         temp.push(c);
-        m = m % 100;
+        m = m%100;
     }
     if(money >= 10){
         let x = Math.floor(m/10);
@@ -589,26 +643,4 @@ function moneyToArray(money) {
     }
     if(money >= 0) temp.push(m);
     return temp;
-    /* switch(money){
-        case money >= 100: {
-            let c = Math.floor(m/100);
-            temp.push(c);
-            m = m % 100;
-        }
-        case (money >= 10): {
-            let x = Math.floor(m/10);
-            temp.push(x);
-            m = m%10;
-        }
-        case money >= 0: { 
-            temp.push(m);
-            return temp;
-        }
-        default: {
-            console.error('Invalid money value');
-            console.log(money);
-            console.log(temp);
-            return [];
-        } 
-    } */
 }

@@ -10,18 +10,21 @@
     <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
     <title>TowerGame</title>
     <script src="src/classes.js"></script>
+    <script src="src/enemies.js"></script>
+    <script src="src/textures.js"></script>
     <script src="src/towerslots.js"></script>
+    <script src="src/towerTypes.js"></script>
+    <script src="src/waves.js"></script>
     <script src="src/waypoints.js"></script>
     <script src="src/tower.js"></script>
-    <script src="src/textures.js"></script>
-    <script src="src/waves.js"></script>
-    <script src="src/enemies.js"></script>
 </head>
 <body onload="onLoad()">
     <canvas id="gameCanvas" width="640" height="480"></canvas>
     <img id="spriteSheet" src="assets/spritesheet.png" style="display: none;">
-    <div>Esc to pause/unpause</div>
-    <div id="moneyDiv" style="display: none;">Money: <span id='money'></span></div>
-    <div id="health" style="display: none;"></div>
+    <div>Esc to pause/unpause</div><p></p>
+    <p>Don't let the ghosts reach the end. Place towers to stop them. Go for a high score.</p>
+    <div id="moneyDiv" style="display: none;">Money: <span id='money'></span>
+    <p>Towers: ¢50</p></div>
+    <div id="health" style="display: none;"></div><p></p>
 </body>
 </html>
