@@ -1,5 +1,31 @@
 "use strict"
 
+/* TODOS:
+    * Make multiple tower types
+        - Blast Tower (splash damage)
+        - Slow Tower (slows enemies)
+        - Magic Tower (constant DOT)
+    * Upgradable towers
+        - Improve Damage, fire rate, range
+    * More Enemy Types
+        - Fast Enemies (need to be slowed down)
+        - Tanky Enemies (lot of health, vulnerable to magic)
+        - Swarm Enemies (lots of enemies that bunch up together,
+            each is individually weak but your towers can only
+            target one at a time, so vulnerable to splash damage)
+    * Call Wave Early
+        - Button appears several seconds after last enemy has spawned in each
+          letting you summon the next wave early for some extra money
+    * mouse pause button
+    * Wave Label
+    * Player Health Indicator
+    * Real Background
+    * Tower Firing Animations
+    * Smoother pathfinding
+    * enemy death animations
+    * Figure out a better format for designing waves 
+*/
+
 //global constants
 const FPS = 60;
 const CIRCLE_RADIANS = Math.PI*2;
@@ -85,6 +111,7 @@ function onLoad() {
     lastFrameTime = performance.now();
 
     canvas.addEventListener('mousedown', event => {
+        if(event.button != 0) return;
         mouse = {
             x: event.offsetX,
             y: event.offsetY,
@@ -217,7 +244,7 @@ function drawPauseScreen(){
 }
 
 function drawGameOver(){
-    context.fill = MENU_FILL_COLOR;
+    context.fillStyle = MENU_FILL_COLOR;
     context.fillRect(0, 0, canvas.width, canvas.height);
 
     let gameOverTex = MENU_TEXS.find(t => { return t.id == 'game over' });
@@ -245,20 +272,22 @@ function drawGameFrame(){
     });
 
     //draw firing anims
-    console.log(firingAnims.length);
+    // console.log(firingAnims.length);
     firingAnims.forEach(anim => {
             console.log('time left ', anim.timer);
             anim.drawAnim();
             console.log('time left ', anim.timer);
         });
-    firingAnims = firingAnims.filter(a => { a.timer > 0 });
+    firingAnims = firingAnims.filter(a => { return a.timer > 0 });
 
     //draw enemies
     enemyArray.forEach(enemy => {
         const health_bar_h = 7;
-        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.size, enemy.tex.size, enemy.left, enemy.top, enemy.tex.size, enemy.tex.size);
+        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.size, enemy.tex.size, 
+            enemy.left, enemy.top, enemy.tex.size, enemy.tex.size);
         context.fillStyle = 'red';
-        context.fillRect(enemy.left, enemy.top - health_bar_h, (enemy.health/100)*enemy.tex.size, health_bar_h);
+        context.fillRect(enemy.left, enemy.top - health_bar_h, 
+            (enemy.health/100)*enemy.tex.size, health_bar_h);
     });
 
     //draw towers & firing arcs
@@ -282,7 +311,8 @@ function drawGameFrame(){
     //draw global selector
     if(globalSelector.isActive){
         globalSelector.button.forEach(button =>{
-            context.drawImage(spriteSheet, button.tex.left, button.tex.top, button.tex.size, button.tex.size, button.pos.x, button.pos.y, button.tex.size, button.tex.size);
+            context.drawImage(spriteSheet, button.tex.left, button.tex.top, button.tex.size, button.tex.size, 
+                button.pos.x, button.pos.y, button.tex.size, button.tex.size);
         });
     }
 
