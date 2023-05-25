@@ -90,6 +90,14 @@ const SELECTOR_BUTTON_TEXS= [
         bottom:360,
         size:40
     },
+    {
+        id:'bomb',
+        left:440,
+        right:480,
+        top:320,
+        bottom:360,
+        size:40,
+    }
 ];
 
 const MENU_TEXS = [
@@ -164,6 +172,13 @@ const TOWER_TEXS = [
         id: 'arrow',
         left: 0,
         top: 0,
+        width: 40,
+        height: 40,
+    },
+    {
+        id: 'bomb',
+        left: 0,
+        top: 40,
         width: 40,
         height: 40,
     }

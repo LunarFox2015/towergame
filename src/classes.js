@@ -27,9 +27,8 @@ class SelectorButton {
     }
 } */
 
-class Tower {
-    constructor(type, x, y, tex, damage, cost, firingRadius, firingDelay = 0){
-        this.type = type;
+class ArrowTower {
+    constructor(x, y, tex, damage, cost, firingRadius, firingDelay = 0){
         this.x = x;
         this.y = y;
         this.firingRadius = firingRadius;
@@ -48,6 +47,22 @@ class Tower {
             a:0.25,
         }
         this.drawArc = false;
+        this.target;
+        this.type = 'arrow';
+    }
+
+    findTarget(){
+        let t = enemyArray.find(e => {
+            let a = this.x - e.x;
+            let b = this.y - e.y;
+            let c = getHyp(a,b);
+            return c < this.firingRadius ** 2;
+        });
+        return t;
+    }
+
+    attackTarget(target){
+        target.reduceHealth(this.damage);
     }
 
     firingDelayDecrement() {
@@ -71,14 +86,86 @@ class Tower {
     }
 }
 
+class BombTower {
+    constructor(x, y, tex, damage, splashRange, cost, firingRadius, firingDelay = 0){
+        this.x = x;
+        this.y = y;
+        this.firingRadius = firingRadius;
+        this.firingDelay = firingDelay;
+        this.tex = tex;
+        this.damage = damage;
+        this.splashRange = splashRange;
+        this.cost = cost;
+        this.top = this.y - this.tex.height/2;
+        this.bottom = this.y + this.tex.height/2;
+        this.left = this.x - this.tex.width/2;
+        this.right = this.x + this.tex.width/2;
+        this.arcColor = {
+            r:255,
+            g:0,
+            b:0,
+            a:0.25,
+        }
+        this.drawArc = false;
+        this.target;
+        this.type = 'bomb';
+    }
+
+    findTarget(){
+        let t = enemyArray.find(e => {
+            let a = this.x - e.x;
+            let b = this.y - e.y;
+            let c = getHyp(a,b);
+            return c < this.firingRadius ** 2;
+        });
+        if(t == undefined) return undefined;
+        let targetPoint = {
+            x: t.x,
+            y: t.y,
+        };
+        return targetPoint;
+    }
+
+    attackTarget(target){
+        let x = target.x;
+        let y = target.y;
+        enemyArray.forEach(e => {
+            let a = x - e.x;
+            let b = y - e.y;
+            let c = getHyp(a,b);
+            if (c<this.splashRange ** 2) e.reduceHealth(this.damage); 
+        });
+    }
+
+    showRadius(mouse){
+        if( mouse.x > this.left &&
+                mouse.x < this.right &&
+                mouse.y > this.top &&
+                mouse.y < this.bottom){
+                    this.drawArc = true;
+                }
+            else this.drawArc = false;
+    }
+
+    firingDelayDecrement() {
+        if(this.firingDelay > 0) {
+            this.firingDelay--;
+        }
+    }
+
+    firingDelayReset(t){
+        this.firingDelay = t;        
+    }
+}
+
 class Enemy {
     constructor(health, speed, value, tex, x = -25, y = 87, target = 0, isAlive = true) {
         this.speed = speed;
         this.x = x;
         this.y = y;
         this.tex = tex;
-        this.left = this.x - this.tex.size/2;
-        this.top = this.y - this.tex.size/2;
+        this.left = this.x - this.tex.width/2;
+        this.top = this.y - this.tex.height/2;
         this.moneyOnKill = value;
         this.isAlive = isAlive;
         this.health = health;
@@ -94,8 +181,8 @@ class Enemy {
     }
 
     updateLeftTop(){
-        this.left = this.x - this.tex.size/2;
-        this.top = this.y - this.tex.size/2;
+        this.left = this.x - this.tex.width/2;
+        this.top = this.y - this.tex.height/2;
     }
 }
 

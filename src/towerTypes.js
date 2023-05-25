@@ -6,5 +6,30 @@ const TOWERS = [
         firingDelayFrames:100,
         animDelayFrames:80,
         cost:50,
-    }
+    },
+    {
+        id:'bomb',
+        firingRadius:100,
+        damage:10,
+        splashRange:10,
+        firingDelayFrames:100,
+        animDelayFrames:80,
+        cost:50,
+    },
+    {
+        id:'freeze',
+        firingRadius:100,
+        damage:0,
+        firingDelayFrames:100,
+        animDelayFrames:80,
+        cost:50,
+    },
+    {
+        id:'magic',
+        firingRadius:100,
+        damage:1,
+        firingDelayFrames:0,
+        animDelayFrames:0,
+        cost:50,
+    },
 ]

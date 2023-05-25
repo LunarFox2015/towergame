@@ -84,6 +84,20 @@ var globalSelector = {
             },
             tex:SELECTOR_BUTTON_TEXS.find(t => { return t.id == 'arrow' }),
         },
+        {
+            id: 'bomb',
+            pos: {
+                x:0,
+                y:0,
+            },
+            bound: {
+                left:0,
+                top:0,
+                right:0,
+                bottom:0,
+            },
+            tex:SELECTOR_BUTTON_TEXS.find(t => { return t.id == 'bomb' }),
+        },
     ],
 };
 var playerMoney = 0;
@@ -95,7 +109,6 @@ var waveComplete = false;
 var waveDelayFrames;
 var playerHealth;
 var healthDisplay;
-
 
 
 //Runs once on page load
@@ -274,20 +287,20 @@ function drawGameFrame(){
     //draw firing anims
     // console.log(firingAnims.length);
     firingAnims.forEach(anim => {
-            console.log('time left ', anim.timer);
+            // console.log('time left ', anim.timer);
             anim.drawAnim();
-            console.log('time left ', anim.timer);
+            // console.log('time left ', anim.timer);
         });
     firingAnims = firingAnims.filter(a => { return a.timer > 0 });
 
     //draw enemies
     enemyArray.forEach(enemy => {
         const health_bar_h = 7;
-        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.size, enemy.tex.size, 
-            enemy.left, enemy.top, enemy.tex.size, enemy.tex.size);
+        context.drawImage(spriteSheet, enemy.tex.left, enemy.tex.top, enemy.tex.width, enemy.tex.height, 
+            enemy.left, enemy.top, enemy.tex.width, enemy.tex.height);
         context.fillStyle = 'red';
         context.fillRect(enemy.left, enemy.top - health_bar_h, 
-            (enemy.health/100)*enemy.tex.size, health_bar_h);
+            (enemy.health/100)*enemy.tex.width, health_bar_h);
     });
 
     //draw towers & firing arcs
@@ -378,7 +391,7 @@ function startGame(){
     enemyArray = [];
     firingAnims = [];
     waveID = 1;
-    playerHealth = 3;
+    playerHealth = 300; //setting health stupid high for testing purposes
     playerMoney = STARTING_MONEY;
     Object.assign(globalSelector, {
         x:0,
@@ -400,27 +413,82 @@ function startGame(){
 }
 
 function spawnEnemies() {
-    let wave = WAVE_TABLE.find(e => {
-        if(e.id === waveID) return true;
-    });
+    let wave = WAVE_TABLE.find(e => { return e.id === waveID; });
+    // let spawnX = -25;
+
+    /* 
+    
+    After working on this and getting it semi working for some reason
+    this function breaks the targeting logic so that rats that manage 
+    to pull ahead of ghosts in the same wave aren't targeted.
+    
+    TODO: Try again 
+
+    console.log('testing new spawn function');
+    wave.enemyList.forEach(chunk => {
+        let type = ENEMIES.find(i => { return chunk.id == i.id; });
+        let amount = chunk.amount;
+
+        console.log(type);
+
+        if(type !== undefined) console.log('spawning %d %s', chunk.amount, type.name);
+        else console.log('didn\'t find an enemy type');
+
+        for(let i = 0; i < amount; i++){
+            if(type.id == 3){
+                console.log('Rats Detected!');
+                let rats = [];
+                for(let i = 0; i < 5; i++){
+                    rats.push(new Enemy(type.health, type.speed, type.value, type.tex));
+                }
+                // console.table(rats);
+                for(let i = rats.length - 1; i > -1; i--){
+                    let rat = rats[i];
+                    rat.x = spawnX;
+                    rat.x += Math.random()*2;
+                    rat.y += Math.random()*2;
+                }
+                console.log('spawning %d rats', rats.length);
+                enemyArray = enemyArray.concat(rats);
+            }
+            else enemyArray.push(new Enemy(type.health, type.speed, type.value, type.tex, spawnX));
+            spawnX -= 60;
+            // console.log(spawnX);
+        }
+        console.table(enemyArray);
+        console.log('returning from new spawning function');
+    }); */
+
+    console.log('spawning enemies');
+
     for(let i = 0; i < wave.enemyList.length; i++){
         let nextSpawn = wave.enemyList[i];
         let spawnX = Math.min((i*-60)-25,-25);
         switch(nextSpawn){
             case 0: {
+                console.log('spawning null');
                 enemyArray.push({isAlive:false});
                 break;
             }
             case 1: {
-                let newGhost = ENEMIES.find(i => {
-                    if(nextSpawn == i.id) return true;
-                });
+                console.log('spawning ghosts');
+                let newGhost = ENEMIES.find(i => { return nextSpawn == i.id; });
                 enemyArray.push(new Enemy(newGhost.health, newGhost.speed, newGhost.value, newGhost.tex, spawnX));
                 break;
             }
+            case 3: {
+                console.log('spawning rats');
+                let newRat = ENEMIES.find(i => { return nextSpawn == i.id; });
+                let ratSpawn;
+                for(let i = 0; i < 5; i++){
+                    ratSpawn = spawnX - 2*i;
+                    enemyArray.push(new Enemy(newRat.health, newRat.speed, newRat.value, newRat.tex, ratSpawn));
+                }
+                break;       
+            }
         }
     }
-    enemyArray.filter(e => e.isAlive);
+    enemyArray = enemyArray.filter(e => e.isAlive);
 }
 
 function newWave(){
@@ -438,7 +506,17 @@ function placeTower(slot, type){
     let tex = TOWER_TEXS.find(t => { return t.id == type;});
     let newTower = TOWERS.find(t => { return t.id == type;});
     slot.isActive = false;
-    let t = new Tower(type, slot.x, slot.y, tex, newTower.damage, newTower.cost, newTower.firingRadius);
+    let t;
+    switch(type){
+        case 'arrow': {
+            t = new ArrowTower(slot.x, slot.y, tex, newTower.damage, newTower.cost, newTower.firingRadius);
+            break;
+        }
+        case 'bomb': {
+            t = new BombTower(slot.x, slot.y, tex, newTower.damage, newTower.splashRange, newTower.cost, newTower.firingRadius);
+            break;            
+        }
+    }
     playerMoney -= t.cost;
     towerArray.push(t);
     towerSlotArray = towerSlotArray.filter(s => s.isActive);
@@ -483,9 +561,8 @@ function clickSelector(mouse){
         mouse.x > b.bound.left &&
         mouse.x < b.bound.right &&
         mouse.y > b.bound.top &&
-        mouse.y < b.bound.bottom) {
-            return b;
-        }});
+        mouse.y < b.bound.bottom) return b;
+    });
     
     if(buttonClicked == undefined) return;
 
@@ -502,6 +579,16 @@ function clickSelector(mouse){
             }
             let slot = towerSlotArray.find(s => { return s.x == globalSelector.x && s.y == globalSelector.y });
             placeTower(slot, 'arrow');
+            break;
+        }
+        case 'bomb': {
+            let cost = TOWERS.find(t => { return t.id == 'bomb' }).cost;
+            if(playerMoney < cost) {
+                globalSelector.isActive = false;
+                break;
+            }
+            let slot = towerSlotArray.find(s => { return s.x == globalSelector.x && s.y == globalSelector.y });
+            placeTower(slot, 'bomb');
             break;
         }
         case undefined: {
@@ -546,9 +633,21 @@ function clickFoundation(mouse){
         bottom: arrow.pos.y + arrow.tex.size,
     };
 
+    let bomb = globalSelector.button.find(b => { return b.id == 'bomb' });
+    bomb.pos = {
+        x: globalSelector.x,
+        y: globalSelector.y + bomb.tex.size/2,
+    };
+    bomb.bound = {
+        left: bomb.pos.x,
+        right: bomb.pos.x + bomb.tex.size,
+        top: bomb.pos.y,
+        bottom: bomb.pos.y + bomb.tex.size,
+    };
+
     let cancel = globalSelector.button.find(b => { return b.id == 'cancel' });;
     cancel.pos = {
-        x: globalSelector.x,
+        x: globalSelector.x + cancel.tex.size,
         y: globalSelector.y + cancel.tex.size/2,                
     };
     cancel.bound = {
@@ -591,12 +690,22 @@ function moveEnemy(){
             enemy.updateLeftTop();
         }
     });
+    // console.log('sorting enemy array');
     enemyArray.sort((a, b) => {
         let v = 0;
-        let x = a.targetWaypoint + (1/getHyp((a.x - a.targetWaypoint.x), (a.y - a.targetWaypoint.y)));
-        let y = b.targetWaypoint + (1/getHyp((b.x - b.targetWaypoint.x), (b.y - b.targetWaypoint.y)));
-        if(x > y) v++;
-        else if(x < y) v--;
+        let getWaypoint = (e) => {
+            let target = {
+                x: MAP_WAYPOINTS[e.targetWaypoint][0],
+                y: MAP_WAYPOINTS[e.targetWaypoint][1]
+            };
+            return target;
+        }
+        let x = a.targetWaypoint + 1/getHyp((a.x - getWaypoint(a).x), (a.y - getWaypoint(a).y));
+        // console.log(x);
+        let y = b.targetWaypoint + 1/getHyp((b.x - getWaypoint(b).x), (b.y - getWaypoint(b).y));
+        // console.log(y);
+        if(x > y) v--;
+        else if(x < y) v++;
         return v;
     });
 }
@@ -604,7 +713,7 @@ function moveEnemy(){
 function attackEnemies(){
     towerArray.forEach(tower => {
         tower.firingDelayDecrement();
-        if(tower.firingDelay <= 0) {
+        /* if(tower.firingDelay <= 0) {
             let target = enemyArray.find(enemy => {
                 let a = tower.x - enemy.x;
                 let b = tower.y - enemy.y;
@@ -613,6 +722,15 @@ function attackEnemies(){
             });
             if(target != undefined){
                 target.reduceHealth(tower.damage);
+                let delay = TOWERS.find(t => { return t.id == tower.type }).firingDelayFrames;
+                tower.firingDelayReset(delay);
+                firingAnims.push(new FiringAnim(tower.x, tower.y, target, FIRING_ANIMS_FRAMES));
+            }
+        } */
+        if(tower.firingDelay <= 0) {
+            let target = tower.findTarget();
+            if(target != undefined){
+                tower.attackTarget(target);
                 let delay = TOWERS.find(t => { return t.id == tower.type }).firingDelayFrames;
                 tower.firingDelayReset(delay);
                 firingAnims.push(new FiringAnim(tower.x, tower.y, target, FIRING_ANIMS_FRAMES));
@@ -629,6 +747,10 @@ function moneyToArray(money) {
     if(money >= 1000){
         return [9,9,9];
     }
+    if(money < 0){
+        return [0];
+    }
+
     let temp = [];
     let m = money;
     if(money >= 100){
